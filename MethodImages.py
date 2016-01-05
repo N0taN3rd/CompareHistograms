@@ -1,6 +1,8 @@
 from collections import defaultdict
 import cv2
 import multiprocessing
+import threading
+import math
 import numpy as np
 from scipy.spatial import distance as dist
 
@@ -84,12 +86,16 @@ class Image:
         self.hists["3d"] = get3dhisto(self.mat)
         self.hists["hsv"] = gethsvhisto(self.mat)
 
+    def clean(self):
+        del self.mat
+        del self.hists
+
     def compare_hist(self, other, meths):
         for mname, m in meths:
             histRet = HistCompRet(mname, self.image)
             for oim in other:
-                histRet.add_ret(oim.image, ("3d", cv2.compareHist(self.hists["3d"], oim.hists["3d"], m)))
-                histRet.add_ret(oim.image, ("hsv", cv2.compareHist(self.hists["hsv"], oim.hists["hsv"], m)))
+                histRet.add_ret((self.image,oim.image), ("3d", cv2.compareHist(self.hists["3d"], oim.hists["3d"], m)))
+                histRet.add_ret((self.image,oim.image), ("hsv", cv2.compareHist(self.hists["hsv"], oim.hists["hsv"], m)))
             self.hist_ret[mname] = histRet
 
 
@@ -99,7 +105,6 @@ class ImageGroup:
         self.site = site
         self.images = []
         self.hist_comp = (("Correlation", cv2.HISTCMP_CORREL),
-                          ("Chi-Squared", cv2.HISTCMP_CHISQR),
                           ("Intersection", cv2.HISTCMP_INTERSECT),
                           ("Hellinger", cv2.HISTCMP_BHATTACHARYYA),
                           ("Kullback-Leibler divergence", cv2.HISTCMP_KL_DIV))
@@ -136,9 +141,19 @@ class ImageGroup:
                 others = imset - singlton
                 im.compare_hist(others, self.hist_comp)
 
+    def clean_up(self):
+        for im in self.images:
+            im.clean()
 
 
 
+class HistoWorker(threading.Thread):
+    def __init__(self,imlist):
+        super().__init__()
+        self.imlist = imlist
+
+    def run(self):
+        pass
 
 class MethodIms:
     def __init__(self, method, path):
@@ -190,14 +205,32 @@ class MethodIms:
         print(self.totalsize)
 
         good = list(filter(lambda x: x[1].valid_for_comp(), self.imdic.items()))
-        print(len(good), len(good)/(multiprocessing.cpu_count()/3))
 
-        print("num cpus=",multiprocessing.cpu_count())
-        '''
         for i, img in good:
-            print(i)
             img.group_cvread()
             img.compare_hists()
+            print(i)
+            for ig in img.images:
+                print(ig)
+                for iname, ret in ig.hist_ret.items():
+                    print(iname)
+                    for k,v in ret.rets.items():
+                        print(k," ",v)
+            break
+
+
+        '''
+        for i, img in good:
+            for actim in img.images:
+                print(actim.image)
+                for oim, ret in  actim.hist_ret.items():
+                    print(oim,ret," ")
+        '''
+
+        '''
+        print(len(good),math.ceil(len(good)/(multiprocessing.cpu_count()/4)), len(good)/(multiprocessing.cpu_count()/4))
+
+        print("num cpus=",multiprocessing.cpu_count())
         '''
 
     def print(self):
