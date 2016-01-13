@@ -172,7 +172,7 @@ class HistCompRet:
     def plot_dates(self, composite=None):
         width = 0.35
         fig = plt.figure()
-        fig.subplots_adjust(bottom=0.18)
+        fig.subplots_adjust(bottom=0.33, right=0.68)
         ax = fig.add_subplot(111)
         ind = np.arange(len(self.results))
         bottomLables = []
@@ -198,7 +198,6 @@ class HistCompRet:
             ax.set_title(composite)
         else:
             ax.set_title(self.b)
-
 
         ax.set_xticks(ind + width)
         plt.setp(ax.set_xticklabels(bottomLables), rotation=90, fontsize=10)
@@ -394,10 +393,14 @@ class ImageGroup:
         rang = range(length)
         results = []
         self.date_results = HistCompRet("Correlation", self.composite)
+        totalSum = 0.0
+        c = 0
         for i in rang:
             if i + 1 < length:
                 ret = cv2.compareHist(self.images[i].hists["3d"], self.images[i + 1].hists["3d"],
                                       cv2.HISTCMP_CORREL)
+                totalSum += ret
+                c += 1
                 # print("cur=", self.images[i].site_date(), " i+1=", self.images[i + 1].site_date(), " results=", ret)
                 # if ret < 0:
                 #     print(self.images[i].image, self.images[i + 1].image, ret)
@@ -411,14 +414,11 @@ class ImageGroup:
             # else:
                 # print("last ", self.images[i].site_date())
 
-        totalSum = 0.0
+
         # print(type(totalSum))
-        for r in results:
-            # print(r, type(r))
-            totalSum += r[1]
         # print(totalSum, totalSum / length)
-        self.sumScore = totalSum / length
-        self.date_results.add_ret("Average",self.sumScore)
+        self.sumScore = totalSum / c
+        self.date_results.add_ret("Average", self.sumScore)
 
     def plot(self):
         if self.date_results is None:
@@ -435,12 +435,7 @@ class ImageGroup:
                 pdf.savefig(fig)
                 plt.close(fig)
             pdf.close()
-        else:
-            fname = self.composite[
-                    0:self.composite.index('.png')] + '_dates_color.png' if self.composite is not None else \
-                self.site + "_dates_color.png"
-            savedir = os.getcwd() + "/plots2/" + fname
-            fig = self.date_results.plot(self.composite)
+
 
     def show(self):
         shows = []
@@ -551,16 +546,31 @@ class MethodIms:
                 img.clean_up()
                 self.imageGroupsCalulated[site] = img
 
+    # fname = "/home/john/PycharmProjects/CompareHistograms/plots/methodDates/%s.pdf"%self.methodName
+    #     savedir = os.getcwd() + "/plots/" + fname
+    #     pdf = PdfPages(fname)
+    #     for _, v in self.imageGroupsCalulated.items():
+    #         dr = v.date_results
+    #
+    #
+    #         pdf.savefig(fig)
+    #         plt.close(fig)
+    #     pdf.close()
+    #     # image = mpimg.imread("/home/john/wsdlims_ripped/ECIR2016TurkData/composites/" + v.composite)
+    #     # plt.imshow(image)
+    #
+    #     plt.show()
+    #     plt.close(fig)
 
     def plot_dates(self):
+        savedir = "/home/john/PycharmProjects/CompareHistograms/plots/methodDates/%s.pdf"%self.methodName
+        pdf = PdfPages(savedir)
         for _, v in self.imageGroupsCalulated.items():
             dr = v.date_results
             fig = dr.plot_dates()
-            # image = mpimg.imread("/home/john/wsdlims_ripped/ECIR2016TurkData/composites/" + v.composite)
-            # plt.imshow(image)
-
-            plt.show()
+            pdf.savefig(fig)
             plt.close(fig)
+        pdf.close()
 
     def plot(self):
         for _, v in self.imageGroupsCalulated.items():

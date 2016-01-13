@@ -60,19 +60,14 @@ def do_comp():
 
     alsum = methods['alSum']
 
-    alsum.calc_comp_hist_date()
-    alsum.plot_dates()
 
-    f1m=alsum.imageGroups[f1]
-    f2m=alsum.imageGroups[f2]
-    # for mname, me in methods.items():
-    #     if me.has_site(f1):
-    #         allsameFind.append(me[f1])
-    #     if me.has_site(f2):
-    #         allsameFind.append(me[f2])
+    for m, method in methods.items():
+        print("plotting %s"%m)
+        method.calc_comp_hist_date()
+        method.plot_dates()
 
-    f1m.group_cvread()
-    f1m.show()
+
+
 
     # f2m.group_cvread()
     # f2m.show()
