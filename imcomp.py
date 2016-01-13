@@ -30,6 +30,7 @@ def do_comp():
 
     impath = args["ip"]
     compath = args["cp"]
+    print(compath)
 
     files = get_files(impath, test=None)
     compisits = get_files(compath, lambda f: "allTheSame" not in f)
@@ -52,12 +53,44 @@ def do_comp():
         m = item[0:index]
         methods.get(m).add_image(item)
 
-    for m, method in methods.items():
+
+    allsameFind = []
+    f1 = "contigogobmx"
+    f2 = "contigogobmx_200"
+
+    alsum = methods['alSum']
+
+    alsum.calc_comp_hist_date()
+    alsum.plot_dates()
+
+    f1m=alsum.imageGroups[f1]
+    f2m=alsum.imageGroups[f2]
+    # for mname, me in methods.items():
+    #     if me.has_site(f1):
+    #         allsameFind.append(me[f1])
+    #     if me.has_site(f2):
+    #         allsameFind.append(me[f2])
+
+    f1m.group_cvread()
+    f1m.show()
+
+    # f2m.group_cvread()
+    # f2m.show()
+
+    # print(len(allsameFind))
+    #
+    # for found in allsameFind:
+    #     print(found)
+    #     found.group_cvread()
+    #     found.show()
+
+    '''
+
+     for m, method in methods.items():
         print("plotting %s"%m)
         method.calc_comp_hists()
         method.plot()
 
-    '''
     alSum = methods['alSum']
 
     alSum.calc_comp_hists()
@@ -89,6 +122,8 @@ for mname, method in methods.items():
         f.close()
 '''
 
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("-ip", required=True, help="Path to the images")
@@ -102,6 +137,7 @@ def main():
     compath = args["cp"]
 
     all = AllMethods(impath, compath)
+
 
     all.pull_images()
     all.calc_comp_hists()
