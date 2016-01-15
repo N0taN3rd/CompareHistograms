@@ -344,7 +344,7 @@ class ImageGroup:
         self.hist_comp = ("Correlation", cv2.HISTCMP_CORREL)
         # ("BHATTACHARYYA", cv2.HISTCMP_BHATTACHARYYA))
         self.composite = None  # type: str
-        self.sumScore = None  # type: float
+        self.average = None  # type: float
         self.date_results = None  # type: HistCompRet
 
     def __str__(self):
@@ -405,20 +405,18 @@ class ImageGroup:
                 # if ret < 0:
                 #     print(self.images[i].image, self.images[i + 1].image, ret)
                 results.append(((self.images[i].date, self.images[i + 1].date),
-                                cv2.compareHist(self.images[i].hists["3d"], self.images[i + 1].hists["3d"],
-                                                cv2.HISTCMP_CORREL)))
+                                ret))
 
                 self.date_results.add_ret((self.images[i].date, self.images[i + 1].date),
-                                          cv2.compareHist(self.images[i].hists["3d"], self.images[i + 1].hists["3d"],
-                                                          cv2.HISTCMP_CORREL))
+                                          ret)
             # else:
                 # print("last ", self.images[i].site_date())
 
 
         # print(type(totalSum))
         # print(totalSum, totalSum / length)
-        self.sumScore = totalSum / c
-        self.date_results.add_ret("Average", self.sumScore)
+        self.average = totalSum / c
+        self.date_results.add_ret("Average", self.average)
 
     def plot(self):
         if self.date_results is None:
@@ -571,6 +569,15 @@ class MethodIms:
             pdf.savefig(fig)
             plt.close(fig)
         pdf.close()
+
+    def showPerComp(self,out):
+        methodTotal = 0.0
+        count = 0.0
+        for k,v in self.imageGroupsCalulated.items():
+            out.write(v.composite+" %f"%v.average+"\n")
+            methodTotal += v.average
+            count += 1.0
+        out.write(self.methodName+" average=%f"%(methodTotal/count)+"\n")
 
     def plot(self):
         for _, v in self.imageGroupsCalulated.items():

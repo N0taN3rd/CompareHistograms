@@ -60,11 +60,14 @@ def do_comp():
 
     alsum = methods['alSum']
 
+    with open('averages.txt','w+') as out:
 
-    for m, method in methods.items():
-        print("plotting %s"%m)
-        method.calc_comp_hist_date()
-        method.plot_dates()
+        for m, method in methods.items():
+            print("plotting %s"%m)
+            out.write(m+"\n")
+            method.calc_comp_hist_date()
+            method.showPerComp(out)
+        # method.plot_dates()
 
 
 
