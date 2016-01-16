@@ -171,9 +171,14 @@ class HistCompRet:
 
     def plot_dates(self, composite=None):
         width = 0.35
+        compi = plt.imread("/home/john/wsdlims_ripped/ECIR2016TurkData/composites/"+composite)
+
         fig = plt.figure()
+
         fig.subplots_adjust(bottom=0.33, right=0.68)
         ax = fig.add_subplot(111)
+        # ax.imshow(mpimg.imread("/home/john/wsdlims_ripped/ECIR2016TurkData/composites/" +self.b))
+        #
         ind = np.arange(len(self.results))
         bottomLables = []
         plotpoints = []
@@ -187,28 +192,31 @@ class HistCompRet:
 
         barcolors = getColor(num=len(self.results))
         tlables = self.labels2(side)
+        # bars = plt.bar(ind, plotpoints,width, color=barcolors)
 
         bars = ax.bar(ind, plotpoints,width, color=barcolors)
-
+        #
         ax.set_xlim(-width, len(ind) + width)
-        ax.set_ylim(0, 2)
+        ax.set_ylim(0, 1.2)
         plt.ylabel('Correlation Similarity Scores')
-
+        #
         if composite is not None:
             ax.set_title(composite)
         else:
             ax.set_title(self.b)
-
+        #
         ax.set_xticks(ind + width)
         plt.setp(ax.set_xticklabels(bottomLables), rotation=90, fontsize=10)
 
         box = ax.get_position()
-        # ax.imshow(mpimg.imread("/home/john/wsdlims_ripped/ECIR2016TurkData/composites/" +self.b))
         ax.set_position([box.x0, box.y0, box.width * 0.8, box.height])
 
-        # ax.legend(bars, tlables,fontsize='small',loc='upper center', bbox_to_anchor=(0.5, 1.0),
-        #   ncol=3, fancybox=True)
+        # # ax.legend(bars, tlables,fontsize='small',loc='upper center', bbox_to_anchor=(0.5, 1.0),
+        # #   ncol=3, fancybox=True)
         ax.legend(bars, tlables, fontsize='x-small', loc='center left', bbox_to_anchor=(1, 0.5))
+        imax = fig.add_subplot(222)
+        imax.imshow(compi, aspect='auto')
+        plt.axis('off')
         return fig
 
     def plot(self, composite=None):
@@ -565,7 +573,7 @@ class MethodIms:
         pdf = PdfPages(savedir)
         for _, v in self.imageGroupsCalulated.items():
             dr = v.date_results
-            fig = dr.plot_dates()
+            fig = dr.plot_dates(composite=v.composite)
             pdf.savefig(fig)
             plt.close(fig)
         pdf.close()

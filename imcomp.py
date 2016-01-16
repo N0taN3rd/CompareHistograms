@@ -66,8 +66,8 @@ def do_comp():
             print("plotting %s"%m)
             out.write(m+"\n")
             method.calc_comp_hist_date()
-            method.showPerComp(out)
-        # method.plot_dates()
+            # method.showPerComp(out)
+            method.plot_dates()
 
 
 
