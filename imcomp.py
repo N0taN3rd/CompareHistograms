@@ -65,9 +65,9 @@ def do_comp():
         for m, method in methods.items():
             print("plotting %s"%m)
             out.write(m+"\n")
-            method.calc_comp_hist_date()
+            method.calc_comp_hist_date(impath,compath,out)
             # method.showPerComp(out)
-            method.plot_dates()
+            # method.plot_dates()
 
 
 

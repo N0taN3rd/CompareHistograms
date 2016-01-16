@@ -395,11 +395,11 @@ class ImageGroup:
             others = imset - singlton
             im.compare_hist(others, self.hist_comp)
 
-    def compare_hists_dates(self):
+    def compare_hists_dates(self, path=None, p=None, out=None):
         self.sort(key=lambda im: im.date_dt)
         length = len(self.images)
         rang = range(length)
-        results = []
+
         self.date_results = HistCompRet("Correlation", self.composite)
         totalSum = 0.0
         c = 0
@@ -407,13 +407,40 @@ class ImageGroup:
             if i + 1 < length:
                 ret = cv2.compareHist(self.images[i].hists["3d"], self.images[i + 1].hists["3d"],
                                       cv2.HISTCMP_CORREL)
+
+                im1 = plt.imread(path+self.images[i].image)
+                im2 = plt.imread(path+self.images[i+1].image)
+
+                # fig,ax = plt.subplots(im2.shape[0]*2,im2.shape[1]*2,sharey=True)
+                fig,axs = plt.subplots(2,sharey=True)
+                fig.set_size_inches(10,10,forward=True)
+                axs[0].imshow(im1,aspect='auto')
+                axs[0].set_title(self.images[i].site_date())
+                axs[0].set_xticks([])
+                axs[0].set_yticks([])
+                plt.axis('off')
+                axs[1].imshow(im2,aspect='auto')
+                axs[1].set_xticks([])
+                axs[1].set_yticks([])
+                axs[1].set_title(self.images[i+1].site_date())
+
+                plt.figtext(x=fig.get_figwidth()/2,y=0,s="score=%f"%ret)
+                # axs[i].set_subtitle()
+                plt.axis('off')
+                plt.show()
+
+
+                # ax = fig.add_subplot(1,3,1)
+                # ax.imshow(im1,aspect='auto')
+                # plt.axis('off')
+                # ax2 = fig.add_subplot(1,3,2)
+                # ax2.imshow(im2,aspect='auto')
+                # plt.axis('off')
+                # plt.show()
                 totalSum += ret
                 c += 1
-                # print("cur=", self.images[i].site_date(), " i+1=", self.images[i + 1].site_date(), " results=", ret)
-                # if ret < 0:
-                #     print(self.images[i].image, self.images[i + 1].image, ret)
-                results.append(((self.images[i].date, self.images[i + 1].date),
-                                ret))
+                if path is not None:
+                    out.write(path+self.images[i].image+", "+path+self.images[i+1].image+" %f"%ret+"\n")
 
                 self.date_results.add_ret((self.images[i].date, self.images[i + 1].date),
                                           ret)
@@ -424,6 +451,10 @@ class ImageGroup:
         # print(type(totalSum))
         # print(totalSum, totalSum / length)
         self.average = totalSum / c
+
+        if p is not None:
+            out.write(p+"/"+self.composite+" %f"%self.average+"\n")
+            out.write("\n")
         self.date_results.add_ret("Average", self.average)
 
     def plot(self):
@@ -442,23 +473,11 @@ class ImageGroup:
                 plt.close(fig)
             pdf.close()
 
-
     def show(self):
         shows = []
-        # for im in self.images:
-        #     if "alSum_httpwebarchiveorgweb20070204092330httpwwwcontigogobmx.png" in im.image:
-        #         # im.cv_read(self.path)
-        #         plot3(self.path,im.image)
-        #         imm = mpimg.imread(self.path+im.image)
-        #         image = plt.imshow(imm)
-        #         plt.title(im.image)
-        #         plt.show()
-        #         im.cv_read(self.path)
-        #         print(im.compare_self())
         self.compare_hists_dates()
 
-        # for f in shows:
-        #     plt.close(f)
+
 
     def clean_up(self):
         for im in self.images:
@@ -544,11 +563,11 @@ class MethodIms:
                 self.imageGroupsCalulated[site] = img
         print(self.methodName, len(self.imageGroupsCalulated))
 
-    def calc_comp_hist_date(self):
+    def calc_comp_hist_date(self,path=None, p=None, out=None):
         for site, img in self.imageGroups.items():
             if img.valid_for_comp() and img.has_composite():
                 img.group_cvread()
-                img.compare_hists_dates()
+                img.compare_hists_dates(path,p,out)
                 img.clean_up()
                 self.imageGroupsCalulated[site] = img
 
@@ -578,7 +597,9 @@ class MethodIms:
             plt.close(fig)
         pdf.close()
 
-    def showPerComp(self,out):
+
+
+    def showPerComp(self, out):
         methodTotal = 0.0
         count = 0.0
         for k,v in self.imageGroupsCalulated.items():
