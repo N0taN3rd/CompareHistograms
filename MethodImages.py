@@ -337,9 +337,12 @@ class Image:
     def site_date(self):
         return self.id
 
+    def real_clean(self):
+        del self.histograms
+
     def clean(self):
         del self.mat
-        del self.histograms
+        # del self.histograms
 
     def compare_hist(self, other: set, meths):
         (mname, m) = meths
@@ -454,6 +457,35 @@ class ImageGroup:
         length = len(self.images)
         rang = range(length)
         self.date_results = HistCompRet("Correlation", self.composite)
+
+    def other(self):
+        self.group_cvread()
+        self.compare_hists_dates()
+        self.clean_up()
+        return self.get_figs()
+
+    def get_figs(self):
+        self.sort(key=lambda im: im.date_dt)
+        length = len(self.images)
+        rang = range(length)
+        self.date_results = HistCompRet("Correlation", self.composite)
+        totalSum = 0.0
+        c = 0
+        figs = []
+        for i in rang:
+            if i + 1 < length:
+                ret = cv2.compareHist(self.images[i].histograms['3d'], self.images[i + 1].histograms['3d'],
+                                      cv2.HISTCMP_CORREL)
+                totalSum += ret
+                c += 1
+                figs.append(self.plot_impair_score(i, "/home/john/wsdlims_ripped/ECIR2016TurkData/screenshots/", ret))
+                self.date_results.add_ret((self.images[i].date, self.images[i + 1].date),
+                                          ret)
+        self.average = totalSum / c
+        self.date_results.add_ret("Average", self.average)
+        figs.append(self.date_results.plot_dates(composite=self.composite))
+
+        return figs
 
     def compare_dates_makepdf(self):
         self.sort(key=lambda im: im.date_dt)
@@ -615,6 +647,10 @@ class ImageGroup:
         for im in self.images:
             im.clean()
 
+    def clean_up2(self):
+        for im in self.images:
+            im.real_clean()
+
     def to_json(self):
         return json.dumps(self, default=lambda c: c.dic_json(), sort_keys=False, indent=4)
 
@@ -627,6 +663,7 @@ class MethodIms:
         self.totalSize = 0
         self.composites = composites  # type: dict[str,str]
         self.imageGroupsCalulated = {}  # type: dict[str,ImageGroup]
+        self.site_figs = {}
 
     def __getitem__(self, site):
         return self.imageGroups[site]
@@ -681,10 +718,20 @@ class MethodIms:
 
     def calc_all_hists(self):
         for site, img in self.imageGroups.items():
+            print(site)
             if img.valid_for_comp():
                 img.group_cvread()
                 img.compare_hists()
                 img.clean_up()
+
+    def calc_comp_mapFigs(self):
+        for site, img in self.imageGroups.items():
+            if img.valid_for_comp() and img.has_composite():
+                img.group_cvread()
+                img.compare_hists_dates()
+                img.clean_up()
+                self.imageGroupsCalulated[site] = img
+                self.site_figs[site] = img.get_figs()
 
     def calc_comp_hists(self):
         for site, img in self.imageGroups.items():
@@ -705,6 +752,7 @@ class MethodIms:
 
     def calc_comp_hist_date(self, path=None, p=None, out=None):
         for site, img in self.imageGroups.items():
+            print(self.methodName, site)
             if img.valid_for_comp() and img.has_composite():
                 img.group_cvread()
                 img.compare_hists_dates(path, p, out)
@@ -722,7 +770,7 @@ class MethodIms:
     def sortBySimularity(self):
         new_list = sorted(self.imageGroupsCalulated.items(), key=lambda x: x[1].average)
         for site, group in new_list:
-            print(self.methodName, group.site,group.average)
+            print(self.methodName, group.site, group.average)
         print("___________________________________________________________________________")
 
     def full(self):
