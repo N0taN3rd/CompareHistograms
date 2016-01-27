@@ -11,6 +11,43 @@ from matplotlib.backends.backend_pdf import PdfPages
 from MethodImages import MethodIms, AllMethods, Why
 
 
+import csv
+from collections import Counter
+
+
+def getMethod(compstr):
+    return compstr[:compstr.find("_")]
+
+
+def getSite(comp):
+    return comp[comp.find("_") + 1:comp.rfind("_")]
+
+
+def getComp(compstring: str):
+    comp = compstring[compstring.rfind("/") + 1:]
+    return comp
+
+
+class Result:
+    def __init__(self):
+        # comp = getComp(base)
+        # self.method = getMethod(comp)
+        self.comp_method = {}  # type: dic
+        # self.count(base)
+
+    def count(self, tocount):
+        # print(tocount)
+        stripped = getComp(tocount)
+        method = getMethod(stripped)
+        site = getSite(stripped)
+        if self.comp_method.get(site) is None:
+            # print("first time seeing ",method)
+            self.comp_method[site] = Counter()
+            self.comp_method[site][method] += 1
+        else:
+            # print(self.comp_method)
+            self.comp_method[site][method] += 1
+
 def get_files(path, test=None):
     if test is None:
         print("None", " ", path)
@@ -40,6 +77,79 @@ def all_same():
 
 
 def do_comp():
+    ret = Result()
+    with open('/home/john/Downloads/Batch_2114373_batch_results.csv', 'r') as o:
+        reader = csv.DictReader(o)
+
+        for item in reader:
+            if "image1" in item['Answer.selectedThumbnail1']:
+                ret.count(item['Input.image1src'])
+            elif "image2" in item['Answer.selectedThumbnail1']:
+                ret.count(item['Input.image2src'])
+            elif "image3" in item['Answer.selectedThumbnail1']:
+                ret.count(item['Input.image3src'])
+            elif "image4" in item['Answer.selectedThumbnail1']:
+                ret.count(item['Input.image4src'])
+            elif "image5" in item['Answer.selectedThumbnail1']:
+                ret.count(item['Input.image5src'])
+            elif "image6" in item['Answer.selectedThumbnail1']:
+                ret.count(item['Input.image6src'])
+            elif "image7" in item['Answer.selectedThumbnail1']:
+                ret.count(item['Input.image7src'])
+            else:
+                ret.count(item['Input.image8src'])
+
+            if "image1" in item['Answer.selectedThumbnail2']:
+                ret.count(item['Input.image1src'])
+            elif "image2" in item['Answer.selectedThumbnail2']:
+                ret.count(item['Input.image2src'])
+            elif "image3" in item['Answer.selectedThumbnail2']:
+                ret.count(item['Input.image3src'])
+            elif "image4" in item['Answer.selectedThumbnail2']:
+                ret.count(item['Input.image4src'])
+            elif "image5" in item['Answer.selectedThumbnail2']:
+                ret.count(item['Input.image5src'])
+            elif "image6" in item['Answer.selectedThumbnail2']:
+                ret.count(item['Input.image6src'])
+            elif "image7" in item['Answer.selectedThumbnail2']:
+                ret.count(item['Input.image7src'])
+            else:
+                ret.count(item['Input.image8src'])
+
+            if "image1" in item['Answer.selectedThumbnail3']:
+                ret.count(item['Input.image1src'])
+            elif "image2" in item['Answer.selectedThumbnail3']:
+                ret.count(item['Input.image2src'])
+            elif "image3" in item['Answer.selectedThumbnail3']:
+                ret.count(item['Input.image3src'])
+            elif "image4" in item['Answer.selectedThumbnail3']:
+                ret.count(item['Input.image4src'])
+            elif "image5" in item['Answer.selectedThumbnail3']:
+                ret.count(item['Input.image5src'])
+            elif "image6" in item['Answer.selectedThumbnail3']:
+                ret.count(item['Input.image6src'])
+            elif "image7" in item['Answer.selectedThumbnail3']:
+                ret.count(item['Input.image7src'])
+            else:
+                ret.count(item['Input.image8src'])
+
+            if "image1" in item['Answer.selectedThumbnail4']:
+                ret.count(item['Input.image1src'])
+            elif "image2" in item['Answer.selectedThumbnail4']:
+                ret.count(item['Input.image2src'])
+            elif "image3" in item['Answer.selectedThumbnail4']:
+                ret.count(item['Input.image3src'])
+            elif "image4" in item['Answer.selectedThumbnail4']:
+                ret.count(item['Input.image4src'])
+            elif "image5" in item['Answer.selectedThumbnail4']:
+                ret.count(item['Input.image5src'])
+            elif "image6" in item['Answer.selectedThumbnail4']:
+                ret.count(item['Input.image6src'])
+            elif "image7" in item['Answer.selectedThumbnail4']:
+                ret.count(item['Input.image7src'])
+            else:
+                ret.count(item['Input.image8src'])
+
     # ap = argparse.ArgumentParser()
     # ap.add_argument("-ip", required=True, help="Path to the images")
     # ap.add_argument("-cp", required=False, help="Path to the images")
@@ -78,14 +188,9 @@ def do_comp():
     # start = time.time()
     # s_t = timeit.default_timer()
 
-    level = defaultdict(list)
+    level = {}
 
-    alSum = methods.get('alSum')
-    interval = methods.get('interval')
-    random = methods.get('random')
-    temporalInterval = methods.get('temporalInterval')
-    level['0.0'].append(alSum['bwjdesigncom'])
-    level['0.0'].append(alSum['dotfivecom'])
+
     # level[]
     #
     # for m, method in methods.items():
@@ -104,15 +209,29 @@ def do_comp():
 
     alSum = methods.get('alSum')
 
+    for site, mcount in sorted(ret.comp_method.items(), key=lambda x: x[0]):
+            mfind = max(mcount.items(), key=lambda x: x[1])
+
+            it = "turkers choose: " + mfind[0]
+            list = []
+            for method, count in sorted(mcount.items(),key=lambda x:x[1],reverse=True):
+                list.append(method+"-"+str(count))
+            joined = ', '.join(list)
+            level[site] = it+": "+joined
+
     for site, group in alSum.imageGroups.items():
 
         if group.valid_for_comp() and group.has_composite():
             print(site)
-            asumfigs = group.other()
+            try:
+                levelString = level[site]
+            except KeyError:
+                levelString = None
+            asumfigs = group.other(levelString)
             print("got asum site figs")
             interval = methods.get('interval')
-            savedir = "/home/john/PycharmProjects/wsdlims/plots/" + site + \
-                      "_bd.pdf"
+            savedir = "/home/john/PycharmProjects/CompareHistograms/plots/" + site + \
+                      "_alSumBD.pdf"
             pdf = PdfPages(savedir)
             figs = []
             for fig in asumfigs:
@@ -125,11 +244,16 @@ def do_comp():
             try:
                 isite = interval[site].other()
             except ZeroDivisionError:
+                 print("there was an div zero exception for interval")
                  for fig in figs:
                     plt.close(fig)
                  pdf.close()
                  continue
-
+            except KeyError:
+                for fig in figs:
+                    plt.close(fig)
+                pdf.close()
+                continue
 
             for fig in isite:
                 pdf.savefig(fig)
@@ -138,28 +262,21 @@ def do_comp():
             interval[site].clean_up2()
 
 
-
-            try:
-                 rsite = methods.get('random')[site].other()
-            except ZeroDivisionError:
-                 for fig in figs:
-                    plt.close(fig)
-                 pdf.close()
-                 continue
-
-
-
             try:
                  tisite = methods.get('temporalInterval')[site].other()
             except ZeroDivisionError:
+                 print("there was an div zero exception for temporalInterval")
                  for fig in figs:
                     plt.close(fig)
                  pdf.close()
                  continue
+            except KeyError:
+                for fig in figs:
+                    plt.close(fig)
+                pdf.close()
+                continue
 
-            for fig in rsite:
-                pdf.savefig(fig)
-                figs.append(fig)
+
 
             methods.get('random')[site].clean_up2()
             print("got random site figs")
@@ -174,6 +291,8 @@ def do_comp():
 
             for fig in figs:
                 plt.close(fig)
+            del figs
+            del pdf
 
 
 #

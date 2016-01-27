@@ -196,7 +196,7 @@ class HistCompRet:
             count += 1
         return labels
 
-    def plot_dates(self, composite=None):
+    def plot_dates(self, composite=None,levelString=None):
         width = 0.35
         compi = plt.imread("/home/john/wsdlims_ripped/ECIR2016TurkData/composites/" + composite)
         # fig, axs = plt.subplots(2, sharey=True)
@@ -234,7 +234,10 @@ class HistCompRet:
         plt.ylabel('Correlation Similarity Scores')
         #
         if composite is not None:
-            axs[1].set_title(composite)
+            if levelString is not None:
+                axs[1].set_title(composite+"\n"+levelString+"\n")
+            else:
+                axs[1].set_title(composite)
         else:
             axs[1].set_title(self.b)
         #
@@ -458,13 +461,13 @@ class ImageGroup:
         rang = range(length)
         self.date_results = HistCompRet("Correlation", self.composite)
 
-    def other(self):
+    def other(self,levelString=None):
         self.group_cvread()
         self.compare_hists_dates()
         self.clean_up()
-        return self.get_figs()
+        return self.get_figs(levelString)
 
-    def get_figs(self):
+    def get_figs(self,levelString=None):
         self.sort(key=lambda im: im.date_dt)
         length = len(self.images)
         rang = range(length)
@@ -478,12 +481,12 @@ class ImageGroup:
                                       cv2.HISTCMP_CORREL)
                 totalSum += ret
                 c += 1
-                figs.append(self.plot_impair_score(i, "/home/john/wsdlims_ripped/ECIR2016TurkData/screenshots/", ret))
+                # figs.append(self.plot_impair_score(i, "/home/john/wsdlims_ripped/ECIR2016TurkData/screenshots/", ret))
                 self.date_results.add_ret((self.images[i].date, self.images[i + 1].date),
                                           ret)
         self.average = totalSum / c
         self.date_results.add_ret("Average", self.average)
-        figs.append(self.date_results.plot_dates(composite=self.composite))
+        figs.append(self.date_results.plot_dates(composite=self.composite,levelString=levelString))
 
         return figs
 
