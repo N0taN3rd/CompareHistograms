@@ -1,7 +1,6 @@
 import json
 import os
 import random
-import time
 from collections import defaultdict
 from datetime import datetime
 from os import listdir
@@ -167,7 +166,7 @@ class HistCompRet:
             self.base_date = getdatetime(base).date().isoformat()
         else:
             self.base_date = None
-        self.results = []  # defaultdict(list)
+        self.results = []  # list
         self.hist_type = None
 
     def __getitem__(self, site):
@@ -196,7 +195,18 @@ class HistCompRet:
             count += 1
         return labels
 
-    def plot_dates(self, composite=None,levelString=None):
+    def avSim(self):
+        rets = []
+        for im, ret in self.results:
+            rets.append(ret)
+
+        retDic = {}
+        retDic["mean"] = np.mean(rets)
+        retDic["meadian"] = np.median(rets)
+        retDic["average"] = np.average(rets)
+        return retDic
+
+    def plot_dates(self, composite=None, levelString=None):
         width = 0.35
         compi = plt.imread("/home/john/wsdlims_ripped/ECIR2016TurkData/composites/" + composite)
         # fig, axs = plt.subplots(2, sharey=True)
@@ -235,7 +245,7 @@ class HistCompRet:
         #
         if composite is not None:
             if levelString is not None:
-                axs[1].set_title(composite+"\n"+levelString+"\n")
+                axs[1].set_title(composite + "\n" + levelString + "\n")
             else:
                 axs[1].set_title(composite)
         else:
@@ -319,6 +329,10 @@ class Image:
     def __str__(self):
         return self.image
 
+    @property
+    def printable(self):
+        return self.site + ":" + self.date_dt.isoformat()
+
     def dic_json(self):
         out = dict()
         out["datetime"] = self.date
@@ -345,7 +359,7 @@ class Image:
 
     def clean(self):
         del self.mat
-        # del self.histograms
+        del self.histograms
 
     def compare_hist(self, other: set, meths):
         (mname, m) = meths
@@ -427,47 +441,13 @@ class ImageGroup:
             others = imset - singlton
             im.compare_hist(others, self.hist_comp)
 
-    def do8(self):
-
-        self.group_cvread()
-        self.sort(key=lambda im: im.date_dt)
-        length = len(self.images)
-        rang = range(length)
-        self.date_results = HistCompRet("Correlation", self.composite)
-
-        end = time.time()
-
-    def do32(self):
-        start = time.time()
-        self.group_cvread()
-        self.sort(key=lambda im: im.date_dt)
-        length = len(self.images)
-        rang = range(length)
-        self.date_results = HistCompRet("Correlation", self.composite)
-
-        end = time.time()
-
-    def do64(self):
-        self.group_cvread()
-        self.sort(key=lambda im: im.date_dt)
-        length = len(self.images)
-        rang = range(length)
-        self.date_results = HistCompRet("Correlation", self.composite)
-
-    def do256(self):
-        self.group_cvread()
-        self.sort(key=lambda im: im.date_dt)
-        length = len(self.images)
-        rang = range(length)
-        self.date_results = HistCompRet("Correlation", self.composite)
-
-    def other(self,levelString=None):
+    def other(self, levelString=None):
         self.group_cvread()
         self.compare_hists_dates()
         self.clean_up()
         return self.get_figs(levelString)
 
-    def get_figs(self,levelString=None):
+    def get_figs(self, levelString=None):
         self.sort(key=lambda im: im.date_dt)
         length = len(self.images)
         rang = range(length)
@@ -486,7 +466,7 @@ class ImageGroup:
                                           ret)
         self.average = totalSum / c
         self.date_results.add_ret("Average", self.average)
-        figs.append(self.date_results.plot_dates(composite=self.composite,levelString=levelString))
+        figs.append(self.date_results.plot_dates(composite=self.composite, levelString=levelString))
 
         return figs
 
@@ -541,8 +521,8 @@ class ImageGroup:
                 totalSum += ret
                 c += 1
                 self.date_results.add_ret(
-                        (self.images[i].date, self.images[i + 1].date),
-                        ret)
+                    (self.images[i].date, self.images[i + 1].date),
+                    ret)
                 # else:
                 # print("last ", self.images[i].site_date())
 
@@ -705,6 +685,7 @@ class MethodIms:
             try:
                 igroup.composite = self.composites[site]
             except KeyError:
+                # print("Fuck composite to im keyerror %s"%site,igroup)
                 pass
 
     def add_image(self, image):
@@ -726,6 +707,9 @@ class MethodIms:
                 img.group_cvread()
                 img.compare_hists()
                 img.clean_up()
+                img.clean_up2()
+
+
 
     def calc_comp_mapFigs(self):
         for site, img in self.imageGroups.items():
@@ -755,7 +739,7 @@ class MethodIms:
 
     def calc_comp_hist_date(self, path=None, p=None, out=None):
         for site, img in self.imageGroups.items():
-            print(self.methodName, site)
+            # print(self.methodName, site)
             if img.valid_for_comp() and img.has_composite():
                 img.group_cvread()
                 img.compare_hists_dates(path, p, out)
@@ -868,6 +852,12 @@ class AllMethods:
             method.plot()
 
 
+class Composites:
+    def __init__(self,path,  compath):
+        self.path = path
+        self.compath = compath + "/"
+        self.sites = defaultdict(list)
+
 class Why:
     def __init__(self, path, impath, compath):
         self.path = path
@@ -947,25 +937,25 @@ class Why:
         fig, axs = plt.subplots(2)
         fig.set_size_inches(15, 15, forward=True)
         self.setaxis(axs[0], estrogenims[0], "random_adventuresinestrogenblogspotcom:" + getdate(
-                estrogen[0]).date().isoformat() + " self compare %f" % estrogenff)
+            estrogen[0]).date().isoformat() + " self compare %f" % estrogenff)
         self.setaxis(axs[1], composite_image, "allTheSame_adventuresinestrogenblogspotcom_composite.png")
         pdf.savefig(fig)
 
         fig, axs = plt.subplots(2)
         fig.set_size_inches(15, 15, forward=True)
         self.setaxis(axs[0], estrogenims[1], "alSum_adventuresinestrogenblogspotcom:" + getdate(
-                estrogen[1]).date().isoformat() + " self compare %f" % estrogenss)
+            estrogen[1]).date().isoformat() + " self compare %f" % estrogenss)
         self.setaxis(axs[1], composite_image, "allTheSame_adventuresinestrogenblogspotcom_composite.png")
         pdf.savefig(fig)
 
         fig, axs = plt.subplots(2)
         fig.set_size_inches(15, 15, forward=True)
         self.setaxis(axs[0], estrogenims[0], "alSum_adventuresinestrogenblogspotcom:" + getdate(
-                estrogen[0]).date().isoformat() + " top image vs bottom %f" % estrogenfs)
+            estrogen[0]).date().isoformat() + " top image vs bottom %f" % estrogenfs)
         self.setaxis(axs[1], estrogenims[1], "random_adventuresinestrogenblogspotcom:" + getdate(
-                estrogen[0]).date().isoformat() + " bottom vs top %f" % cv2.compareHist(estrogenhits[1],
-                                                                                        estrogenhits[0],
-                                                                                        cv2.HISTCMP_CORREL))
+            estrogen[0]).date().isoformat() + " bottom vs top %f" % cv2.compareHist(estrogenhits[1],
+                                                                                    estrogenhits[0],
+                                                                                    cv2.HISTCMP_CORREL))
         pdf.savefig(fig)
 
         # plt.show()
