@@ -2,9 +2,10 @@ import math
 from statistics import mean
 
 import cv2
+from sklearn import metrics
+from sklearn.cluster import KMeans
 
 from util import getsite, getdatetime
-
 
 histogram_comparison_method = ("Correlation", cv2.HISTCMP_CORREL)
 
@@ -23,6 +24,7 @@ class CompositeThumbResults:
         self.composite = composite
         self.results = []  # list
         self.av = None
+
 
     def __getitem__(self, site):
         return self.results[site]
@@ -45,6 +47,7 @@ class Thumbnail:
         self.hist_ret = None
         self.rawImage = None
         self.path = None
+        self.numUniqueColor = None
 
     def __str__(self):
         return self.imageName
@@ -60,13 +63,45 @@ class Thumbnail:
     def cv_get_histogram(self, path):
         self.path = path
         self.histogram = gethistogram(cv2.imread(path + self.imageName, cv2.IMREAD_COLOR))
+        self.numUniqueColor = cv2.countNonZero(self.histogram.flatten())
+
+    def getUniqueColors(self):
+        image = cv2.imread(self.path + self.imageName, cv2.IMREAD_COLOR)
+        image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+        h, w, _ = image.shape
+        w_new = int(100 * w / max(w, h) )
+        h_new = int(100 * h / max(w, h) )
+
+        image = cv2.resize(image, (w_new, h_new))
+        image_array = image.reshape((image.shape[0] * image.shape[1], 3))
+
+        bestSilhouette = -1
+        bestClusters = 0
+        for clusters in range(2, 10):
+            # Cluster colours
+            clt = KMeans(n_clusters=clusters,n_jobs=2)
+            clt.fit(image_array)
+
+            # Validate clustering result
+            if len(clt.labels_) > 1:
+                silhouette = metrics.silhouette_score(image_array, clt.labels_, metric='euclidean')
+
+                # Find the best one
+                if silhouette > bestSilhouette:
+                    bestSilhouette = silhouette
+                    bestClusters = clusters
+
+        return bestClusters
+
 
     def site_date(self):
         return self.id
 
+
     def clean_up(self):
         del self.histogram
         self.clean_rawim()
+
 
     def clean_rawim(self):
         if self.rawImage is not None:
@@ -114,6 +149,13 @@ class CompositeThumbnails:
     def group_cvhist(self):
         for im in self.thumbnails:
             im.cv_get_histogram(self.path)
+
+    def av_color(self):
+        # it = []
+        # for t in self.thumbnails:
+        #     it.append(t.numUniqueColor)
+
+        return mean(map(lambda x: x.getUniqueColors(), self.thumbnails))
 
     def compareDates_vsOther_oneTOone(self, other, out=None):
         self.sort()
@@ -178,9 +220,8 @@ class MethodCompThums:
             return False
         return True
 
-
     def sorted_items(self):
-        return sorted(self.compositThumbs.items(),key=lambda x:x[0])
+        return sorted(self.compositThumbs.items(), key=lambda x: x[0])
 
     def items(self):
         return self.compositThumbs.items()
@@ -251,25 +292,23 @@ class MethodCompThums:
 
 
 class CompositeOnly:
-    def __init__(self,path,method_composites):
+    def __init__(self, path, method_composites):
         self.method_composites = method_composites
         self.path = path + "/"
 
-    def do_comparison(self,out):
-        alsum = sorted(self.method_composites['alSum'].items(),key=lambda x:x[0])
-        random = sorted(self.method_composites['random'].items(),key=lambda x:x[0])
-        temporal = sorted(self.method_composites['temporalInterval'].items(),key=lambda x:x[0])
-        for ((asite,acomp),(rsite,rcomp)),(tsite,tcomp) in zip(zip(alsum,random),temporal):
-            print(acomp,rcomp,tcomp)
+    def do_comparison(self, out):
+        alsum = sorted(self.method_composites['alSum'].items(), key=lambda x: x[0])
+        random = sorted(self.method_composites['random'].items(), key=lambda x: x[0])
+        temporal = sorted(self.method_composites['temporalInterval'].items(), key=lambda x: x[0])
+        for ((asite, acomp), (rsite, rcomp)), (tsite, tcomp) in zip(zip(alsum, random), temporal):
+            print(acomp, rcomp, tcomp)
 
             aHist = gethistogram(cv2.imread(self.path + acomp, cv2.IMREAD_COLOR))
             rHist = gethistogram(cv2.imread(self.path + rcomp, cv2.IMREAD_COLOR))
             tHist = gethistogram(cv2.imread(self.path + tcomp, cv2.IMREAD_COLOR))
-            arSim = math.fabs(cv2.compareHist(aHist,rHist, cv2.HISTCMP_CORREL))
-            atSim = math.fabs(cv2.compareHist(aHist,tHist, cv2.HISTCMP_CORREL))
-            out.write("%s,%f,%f\n"%(asite,arSim,atSim))
+            arSim = math.fabs(cv2.compareHist(aHist, rHist, cv2.HISTCMP_CORREL))
+            atSim = math.fabs(cv2.compareHist(aHist, tHist, cv2.HISTCMP_CORREL))
+            out.write("%s,%f,%f\n" % (asite, arSim, atSim))
             del aHist
             del rHist
             del tHist
-
-

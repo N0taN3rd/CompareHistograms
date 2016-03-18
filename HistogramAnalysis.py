@@ -26,11 +26,11 @@ def temporalPairs(alsum,random,ti):
         alsum.calc_comp_hist_date()
         random.calc_comp_hist_date()
         ti.calc_comp_hist_date()
-        with open("temporalPairs.csv","w+") as out:
-            out.write("site,alsum,random,aVrDif,temporal,aVtDiff\n")
+        with open("temporalPairs3.csv","w+") as out:
+            out.write("site,alsum,random,aVrDif,temporal,aVtDiff,account,rccount,ticcount\n")
             for ((asite,acompt),(rsite,rcompt)),(tsite,tcompt) in \
                 zip(zip(alsum.sorted_items(),random.sorted_items()),ti.sorted_items()):
-                sout = "%s,%f,%f,%f,%f,%f\n"%(asite,acompt.average,rcompt.average,(acompt.average-rcompt.average),tcompt.average,(acompt.average-tcompt.average))
+                sout = "%s,%f,%f,%f,%f,%f,%f,%f,%f\n"%(asite,acompt.average,rcompt.average,(acompt.average-rcompt.average),tcompt.average,(acompt.average-tcompt.average),acompt.av_color(),rcompt.av_color(),tcompt.av_color())
                 out.write(sout)
                 print(sout)
 
@@ -59,18 +59,18 @@ if __name__ == "__main__":
         site = comp[comp.find("_") + 1:comp.rfind("_")]
         method_composites[comp[:comp.index("_")]][site] = comp
 
-    composite_only_histogram(method_composites,compath)
+    # composite_only_histogram(method_composites,compath)
 
 
-    # files = get_and_process_thumbs(impath, method_composites, goodUris)
-    # print(type(files))
-    #
-    # # print(method_composites)
-    # impath += "/"
-    #
-    # methods = {'random': MethodCompThums('random', impath, files["random"]),
-    #            'temporalInterval': MethodCompThums('temporalInterval', impath, files["temporalInterval"]),
-    #            'alSum': MethodCompThums('alSum', impath, files["alSum"])}
-    #
-    # # thumbThumbAnalysis(methods['alSum'], methods['random'], methods['temporalInterval'])
-    # temporalPairs(methods['alSum'], methods['random'], methods['temporalInterval'])
+    files = get_and_process_thumbs(impath, method_composites, goodUris)
+    print(type(files))
+
+    # print(method_composites)
+    impath += "/"
+
+    methods = {'random': MethodCompThums('random', impath, files["random"]),
+               'temporalInterval': MethodCompThums('temporalInterval', impath, files["temporalInterval"]),
+               'alSum': MethodCompThums('alSum', impath, files["alSum"])}
+
+    # thumbThumbAnalysis(methods['alSum'], methods['random'], methods['temporalInterval'])
+    temporalPairs(methods['alSum'], methods['random'], methods['temporalInterval'])
