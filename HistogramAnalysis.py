@@ -42,7 +42,7 @@ def composite_only_histogram(method_composites,path):
         composit_analysis.do_comparison(out)
 
 
-if __name__ == "__main__":
+def main():
     impath = "/home/john/wsdlims_ripped/ECIR2016TurkData/screenshots"  # args["ip"]
     compath = "/home/john/wsdlims_ripped/ECIR2016TurkData/composites"  # args["cp"]
     goodUris = []
@@ -74,3 +74,46 @@ if __name__ == "__main__":
 
     # thumbThumbAnalysis(methods['alSum'], methods['random'], methods['temporalInterval'])
     temporalPairs(methods['alSum'], methods['random'], methods['temporalInterval'])
+
+
+def colorAnalysis():
+    impath = "/home/john/wsdlims_ripped/ECIR2016TurkData/screenshots"  # args["ip"]
+    compath = "/home/john/wsdlims_ripped/ECIR2016TurkData/composites"  # args["cp"]
+    goodUris = []
+
+    with open("gooduris_20160225.txt", "r") as read:
+        for uri in map(lambda line: line.rstrip("\n"), read):
+            goodUris.append(uri)
+
+    compisits = get_files(compath, lambda f: "allTheSame" not in f and check_if_goodURI(f, goodUris) and
+                                             "interval" not in f)
+    method_composites = defaultdict(dict)
+
+    for comp in sorted(compisits):
+        site = comp[comp.find("_") + 1:comp.rfind("_")]
+        method_composites[comp[:comp.index("_")]][site] = comp
+
+    # composite_only_histogram(method_composites,compath)
+
+
+    files = get_and_process_thumbs(impath, method_composites, goodUris)
+    print(type(files))
+
+    # print(method_composites)
+    impath += "/"
+
+    methods = {'random': MethodCompThums('random', impath, files["random"]),
+               'temporalInterval': MethodCompThums('temporalInterval', impath, files["temporalInterval"]),
+               'alSum': MethodCompThums('alSum', impath, files["alSum"])} # type: dict[str,MethodCompThums]
+
+    for mname, method in methods.items():
+        print(mname,method)
+        dcm = method.get_composite_dom_colors()
+        for k,v in dcm.items():
+            print(k,v.composite,v.site)
+            for date,cc in sorted(v.results.items(),key=lambda x:x[0]):
+                print(date,cc)
+        break
+
+if __name__ == "__main__":
+    colorAnalysis()

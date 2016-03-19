@@ -4,9 +4,9 @@ from statistics import mean
 import cv2
 from sklearn import metrics
 from sklearn.cluster import KMeans
-
+from dominateColor import getColorComposition,ColorComposition
 from util import getsite, getdatetime
-
+from datetime import datetime
 histogram_comparison_method = ("Correlation", cv2.HISTCMP_CORREL)
 
 
@@ -17,6 +17,17 @@ def gethistogram(cvim):
 
     # return imhist
 
+
+class CompositeColorResulst:
+    """
+    :type site: str
+    :type composite: str
+    :type results: dict[datetime,list[ColorComposition]]
+    """
+    def __init__(self,site, composite):
+        self.site = site
+        self.composite = composite
+        self.results = {}  # type: dict(datetime,list[ColorComposition])
 
 class CompositeThumbResults:
     def __init__(self, site, composite):
@@ -64,6 +75,9 @@ class Thumbnail:
         self.path = path
         self.histogram = gethistogram(cv2.imread(path + self.imageName, cv2.IMREAD_COLOR))
         self.numUniqueColor = cv2.countNonZero(self.histogram.flatten())
+
+    def get_dominate_colors(self):
+        return getColorComposition("/home/john/wsdlims_ripped/ECIR2016TurkData/screenshots/"  + self.imageName)
 
     def getUniqueColors(self):
         image = cv2.imread(self.path + self.imageName, cv2.IMREAD_COLOR)
@@ -138,6 +152,13 @@ class CompositeThumbnails:
 
     def has_composite(self):
         return self.composite is not None
+
+    def get_dom_colors_(self):
+        colorComp = CompositeColorResulst(self.site,self.composite) # type: CompositeColorResulst
+        for thum in self.thumbnails:
+            colorComp.results[thum.date_dt] = thum.get_dominate_colors()
+        return colorComp
+
 
     def _process(self, compmapping):
         for thum in compmapping.imList:
@@ -260,6 +281,17 @@ class MethodCompThums:
             #
             # self.totalSize += 1
             # self.compositThumbs[site].add_thumb(Thumbnail(image))
+
+    def get_composite_dom_colors(self):
+          """
+          :rtype: dict[str,CompositeColorResulst]
+          """
+          dc_per_comp = {} # type: dict(str,CompositeColorResulst)
+          for site, compthumb in self.compositThumbs.items():
+              print("proccessing site ",site)
+              dc_per_comp[site] = compthumb.get_dom_colors_()
+          return dc_per_comp
+
 
     def get_histograms(self):
         for site, compthumb in self.compositThumbs.items():

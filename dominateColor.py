@@ -13,6 +13,7 @@ import webcolors
 
 
 def closest_colour(requested_colour):
+    # Euclidian distance in the RGB space.
     min_colours = {}
     for key, name in webcolors.css3_hex_to_names.items():
         r_c, g_c, b_c = webcolors.hex_to_rgb(key)
@@ -39,36 +40,49 @@ def centroid_histogram(clt):
 def plot_colors(hist, centroids):
     # initialize the bar chart representing the relative frequency
     # of each of the colors
-    bar = np.zeros((50, 300, 3), dtype="uint8")
+
     startX = 0
     # loop over the percentage of each cluster and the color of
     # each cluster
     for (percent, color) in zip(hist, centroids):
         print(percent,color,"Closest colour name: %s"%closest_colour((color[0],color[1],color[2])))
-        # plot the relative percentage of each cluster
-        endX = startX + (percent * 300)
-        cv2.rectangle(bar, (int(startX), 0), (int(endX), 50),
-                      color.astype("uint8").tolist(), -1)
-        startX = endX
 
-    # return the bar chart
+
     return bar
 
 class ColorComposition:
+    """
+    :type percent: float
+    :type rgb: list[float]
+    :type name: str
+    """
     def __init__(self,percent,rgb,name):
         self.percent = percent
         self.rgb = rgb
         self.name = name
 
-class ImgroupColor:
-    def __init__(self,imgroup):
-        self.imgroup = imgroup
-        self.site_color = {}
-
-    def find_it(self):
-        pass
+    def __str__(self):
+        return "color: %s at %f percent"%(self.name,self.percent)
 
 
+def getColorComposition(impath):
+    """
+    :param impath: str
+    :return: list[ColorComposition]
+    """
+    image = cv2.cvtColor(cv2.imread(impath, cv2.IMREAD_COLOR), cv2.COLOR_BGR2RGB)
+    image = image.reshape((image.shape[0] * image.shape[1], 3))
+    clt = KMeans(n_clusters=4,n_jobs=4)
+    clt.fit(image)
+    hist = centroid_histogram(clt)
+    composition = [] # type: list[ColorComposition]
+    for (percent, color) in zip(hist, clt.cluster_centers_):
+        closest = closest_colour((color[0],color[1],color[2]))
+        composition.append(ColorComposition(percent,color,closest))
+    del image
+    del hist
+    del clt
+    return composition
 
 if __name__ == "__main__":
     print("me")
@@ -118,11 +132,5 @@ if __name__ == "__main__":
                 clt.fit(image2)
                 hist = centroid_histogram(clt)
                 bar = plot_colors(hist, clt.cluster_centers_)
-                # show our color bart
-                plt.figure()
-                plt.axis("off")
-                plt.imshow(bar)
-                plt.figure()
-                plt.axis("off")
-                plt.imshow(image)
-                plt.show()
+                break
+
