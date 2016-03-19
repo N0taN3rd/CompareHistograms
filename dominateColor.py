@@ -72,7 +72,7 @@ def getColorComposition(impath):
     """
     image = cv2.cvtColor(cv2.imread(impath, cv2.IMREAD_COLOR), cv2.COLOR_BGR2RGB)
     image = image.reshape((image.shape[0] * image.shape[1], 3))
-    clt = KMeans(n_clusters=4,n_jobs=4)
+    clt = KMeans(n_clusters=4,n_jobs=2)
     clt.fit(image)
     hist = centroid_histogram(clt)
     composition = [] # type: list[ColorComposition]
