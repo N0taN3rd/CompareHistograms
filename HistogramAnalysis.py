@@ -1,8 +1,8 @@
 from collections import defaultdict
 
-from MethodComposites import MethodCompThums,CompositeOnly
+from MethodComposites import MethodCompThums,CompositeOnly,CompositeColorResulst
 from util import get_files,check_if_goodURI,get_and_process_thumbs
-
+import json
 
 def thumbThumbAnalysis(alSum, m, m2):
     print("alSum vs %s" % m.methodName)
@@ -106,14 +106,28 @@ def colorAnalysis():
                'temporalInterval': MethodCompThums('temporalInterval', impath, files["temporalInterval"]),
                'alSum': MethodCompThums('alSum', impath, files["alSum"])} # type: dict[str,MethodCompThums]
 
+    out = {} # type: dict[str,dict[str,CompositeColorResulst]]
     for mname, method in methods.items():
         print(mname,method)
         dcm = method.get_composite_dom_colors()
-        for k,v in dcm.items():
-            print(k,v.composite,v.site)
-            for date,cc in sorted(v.results.items(),key=lambda x:x[0]):
-                print(date,cc)
-        break
+        out[mname] = dcm
+
+
+    try:
+        with open("colorResults.json","w+") as wout:
+            wout.write(json.dumps(out,indent=1,default=lambda x:x.to_jdic()))
+    except TypeError as e:
+        print("Wow bad thing happened",e)
+
+    for k,v in out.items():
+        print("+++++++++++++++++++++++++++++++++++++++++++++++++")
+        print(k)
+        for site,ret in v.items():
+            print("site: ",site)
+            for date,color in ret.results.items():
+                print(date,''.join(color))
+
+
 
 if __name__ == "__main__":
     colorAnalysis()

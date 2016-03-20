@@ -29,6 +29,12 @@ class CompositeColorResulst:
         self.composite = composite
         self.results = {}  # type: dict(datetime,list[ColorComposition])
 
+    def to_jdic(self):
+        trans = {}
+        for dt,cc in self.results.items():
+            trans[dt.date().isoformat()] = cc
+        return {"site": self.site, "comp":self.composite, "color":trans}
+
 class CompositeThumbResults:
     def __init__(self, site, composite):
         self.site = site
@@ -73,7 +79,7 @@ class Thumbnail:
 
     def cv_get_histogram(self, path):
         self.path = path
-        self.histogram = gethistogram(cv2.imread(path + self.imageName, cv2.IMREAD_COLOR))
+        self.histogram = gethistogram(cv2.cvtColor(cv2.imread(path + self.imageName, cv2.IMREAD_COLOR), cv2.COLOR_BGR2RGB))
         self.numUniqueColor = cv2.countNonZero(self.histogram.flatten())
 
     def get_dominate_colors(self):
@@ -261,26 +267,6 @@ class MethodCompThums:
             self.compositThumbs[site] = CompositeThumbnails(self.path, compmap)
 
 
-            # site = None#getsite(image)
-            # # print("image %s"%image,"image site %s"%site)
-            # print()
-            # for compSite in sorted(self.composites.keys()):
-            #     print(compSite,image)
-            #     if compSite in image:
-            #         site = compSite
-            #         print("Composite Site is in there!!! ",site)
-            #
-            # print("image %s"%image,"image site %s"%site)
-            # try:
-            #     self.compositThumbs[site]
-            # except KeyError as e:
-            #     # print("addimage in methcomp",e)
-            #     igroup = CompositeThumbnails(self.path, site)
-            #     self.composite_to_im(igroup, site)
-            #     self.compositThumbs[site] = igroup
-            #
-            # self.totalSize += 1
-            # self.compositThumbs[site].add_thumb(Thumbnail(image))
 
     def get_composite_dom_colors(self):
           """

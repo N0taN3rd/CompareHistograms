@@ -3,7 +3,7 @@ from collections import defaultdict
 import cv2
 import matplotlib.pyplot as plt
 import numpy as np
-from sklearn.cluster import KMeans
+from sklearn.cluster import KMeans, estimate_bandwidth, MeanShift, DBSCAN
 
 from MethodImages import MethodIms
 from imcomp import get_files
@@ -38,15 +38,13 @@ def centroid_histogram(clt):
 
 
 def plot_colors(hist, centroids):
-    # initialize the bar chart representing the relative frequency
-    # of each of the colors
-
+    bar = np.zeros((50, 300, 3), dtype = "uint8")
     startX = 0
-    # loop over the percentage of each cluster and the color of
-    # each cluster
-    for (percent, color) in zip(hist, centroids):
-        print(percent,color,"Closest colour name: %s"%closest_colour((color[0],color[1],color[2])))
-
+    for (percent,color) in zip(hist,centroids):
+        endX = startX+(percent*300)
+        cv2.rectangle(bar, (int(startX), 0), (int(endX), 50),
+			color.astype("uint8").tolist(), -1)
+        startX = endX
 
     return bar
 
@@ -61,8 +59,15 @@ class ColorComposition:
         self.rgb = rgb
         self.name = name
 
+    def to_jdic(self):
+        return {"name":self.name,"rgb":self.rgb,"percent":self.percent}
+
     def __str__(self):
         return "color: %s at %f percent"%(self.name,self.percent)
+
+
+def old(impath):
+    pass
 
 
 def getColorComposition(impath):
@@ -71,15 +76,35 @@ def getColorComposition(impath):
     :return: list[ColorComposition]
     """
     image = cv2.cvtColor(cv2.imread(impath, cv2.IMREAD_COLOR), cv2.COLOR_BGR2RGB)
-    image = image.reshape((image.shape[0] * image.shape[1], 3))
-    clt = KMeans(n_clusters=4,n_jobs=2)
-    clt.fit(image)
+
+    h, w, _ = image.shape
+    # w_new = int(100 * w / max(w, h) )
+    w_new = 200
+    # h_new = int(100 * h / max(w, h) )
+    h_new = 200
+    print("Width original %d height original %d | width new %d height new %d"%(w,h,w_new,h_new))
+    image = cv2.resize(image, (w_new, h_new))
+    image2 = image.reshape((image.shape[0] * image.shape[1], 3))
+
+    clt = KMeans(n_clusters=6,n_jobs=5)
+    clt.fit(image2)
     hist = centroid_histogram(clt)
     composition = [] # type: list[ColorComposition]
     for (percent, color) in zip(hist, clt.cluster_centers_):
         closest = closest_colour((color[0],color[1],color[2]))
+        print("Closest %s with percent %f"%(closest,percent))
         composition.append(ColorComposition(percent,color,closest))
+    print("____________________________")
+    bar = plot_colors(hist, clt.cluster_centers_)
+    plt.figure()
+    plt.axis("off")
+    plt.imshow(image)
+    plt.figure()
+    plt.axis("off")
+    plt.imshow(bar)
+    plt.show()
     del image
+    del image2
     del hist
     del clt
     return composition
