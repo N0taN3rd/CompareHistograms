@@ -75,6 +75,10 @@ def get3dhisto(cvim):
                           [0, 256, 0, 256, 0, 256])
     return cv2.normalize(imhist, imhist)
 
+def getlavhisto(cvim):
+    imhist = cv2.calcHist([cvim], [0, 1, 2], None, [100, 127, 127],
+                          [0, 100, -127, 127, -127, 127])
+    return cv2.normalize(imhist, imhist)
 
 def get3dhisto8(cvim):
     imhist = cv2.calcHist([cvim], [0, 1, 2], None, [8, 8, 8],
@@ -91,7 +95,7 @@ def get3dhisto32(cvim):
 def get3dhisto64(cvim):
     imhist = cv2.calcHist([cvim], [0, 1, 2], None, [64, 64, 64],
                           [0, 256, 0, 256, 0, 256])
-    return cv2.normalize(imhist, imhist).flatten()
+    return cv2.normalize(imhist, imhist)
 
 
 def get3dhisto256(cvim):

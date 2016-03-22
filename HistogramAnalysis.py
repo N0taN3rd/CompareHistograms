@@ -106,6 +106,8 @@ def colorAnalysis():
                'temporalInterval': MethodCompThums('temporalInterval', impath, files["temporalInterval"]),
                'alSum': MethodCompThums('alSum', impath, files["alSum"])} # type: dict[str,MethodCompThums]
 
+    alsum = methods['alSum']
+
     out = {} # type: dict[str,dict[str,CompositeColorResulst]]
     for mname, method in methods.items():
         print(mname,method)
@@ -114,7 +116,7 @@ def colorAnalysis():
 
 
     try:
-        with open("colorResults.json","w+") as wout:
+        with open("colorResults2.json","w+") as wout:
             wout.write(json.dumps(out,indent=1,default=lambda x:x.to_jdic()))
     except TypeError as e:
         print("Wow bad thing happened",e)

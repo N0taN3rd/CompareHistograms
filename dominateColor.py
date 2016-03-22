@@ -24,6 +24,13 @@ def closest_colour(requested_colour):
         min_colours[(rd + gd + bd)] = name
     return min_colours[min(min_colours.keys())]
 
+def get_colour_name(requested_colour):
+    try:
+        closest_name = actual_name = webcolors.rgb_to_name(requested_colour)
+    except ValueError:
+        closest_name = closest_colour(requested_colour)
+        actual_name = None
+    return actual_name, closest_name
 
 def centroid_histogram(clt):
     # grab the number of different clusters and create a histogram
@@ -90,18 +97,21 @@ def testClusters(image):
     for clusters in range(2, 10):
         # Cluster colours
         clt = MiniBatchKMeans(n_clusters = clusters)
-        clt.fit(image)
+        labs = clt.fit_predict(image)
+        try:
+            silhouette = metrics.silhouette_score(image, labs, metric='euclidean',sample_size=500)
+            if silhouette > bestSilhouette:
+                bestSilhouette = silhouette
+                bestClusters = clusters
+                bestLabels = clt.labels_
+                bestCenters = clt.cluster_centers_
 
-        # Validate clustering result
-        silhouette = metrics.silhouette_score(image, clt.labels_, metric='euclidean',sample_size=1000)
-        print(clusters)
-        # Find the best one
-        if silhouette > bestSilhouette:
-            print("silhouette is smaller than best")
-            bestSilhouette = silhouette
-            bestClusters = clusters
-            bestLabels = clt.labels_
-            bestCenters = clt.cluster_centers_
+        except ValueError as ve:
+            print(ve,clusters)
+            if len(labs) == 1:
+                bestLabels = labs
+                bestCenters = clt.cluster_centers_
+        del clt
 
     return bestClusters,bestLabels,bestCenters
 
@@ -127,43 +137,46 @@ def getColorComposition(impath):
     del clt
     return composition
 
+
+def reduceColors(path):
+    image = cv2.imread(path, cv2.IMREAD_COLOR)
+    (h, w) = image.shape[:2]
+    image = cv2.cvtColor(image, cv2.COLOR_BGR2LAB)
+    image = image.reshape((image.shape[0] * image.shape[1], 3))
+    clt = MiniBatchKMeans(n_clusters = 12)
+    labels = clt.fit_predict(image)
+    quant = clt.cluster_centers_.astype("uint8")[labels]
+    quant = quant.reshape((h, w, 3))
+    quant = cv2.cvtColor(quant, cv2.COLOR_LAB2BGR)
+    return quant
+
+
+
+
 def getColorComposition2(impath):
     """
     :param impath: str
     :return: list[ColorComposition]
     """
-    image = cv2.cvtColor(cv2.imread(impath, cv2.IMREAD_COLOR), cv2.COLOR_BGR2RGB)
-
-    # h, w, _ = image.shape
-    # # w_new = int(100 * w / max(w, h) )
-    # w_new = 200
-    # # h_new = int(100 * h / max(w, h) )
-    # h_new = 200
-    # print("Width original %d height original %d | width new %d height new %d"%(w,h,w_new,h_new))
-    # image = cv2.resize(image, (w_new, h_new))
+    # image = cv2.cvtColor(cv2.imread(impath, cv2.IMREAD_COLOR), cv2.COLOR_BGR2RGB)
+    image = reduceColors(impath)
+    # r = 512 / image.shape[1]
+    # dim = (512, int(image.shape[0] * r))
+    # image = cv2.resize(image, dim, interpolation = cv2.INTER_AREA)
     image2 = image.reshape((image.shape[0] * image.shape[1], 3))
     bestClusters,bestLabels,bestCenters = testClusters(image2)
     # clt = MiniBatchKMeans(n_clusters=6)
     # clt.fit(image2)
-    hist = centroid_histogram2(bestLabels)
     composition = [] # type: list[ColorComposition]
-    for (percent, color) in zip(hist, bestCenters):
-        closest = closest_colour((color[0],color[1],color[2]))
-        print("Closest %s with percent %f"%(closest,percent))
-        composition.append(ColorComposition(percent,color,closest))
-    print("____________________________")
-    # bar = plot_colors(hist, bestCenters)
-    # plt.figure()
-    # plt.axis("off")
-    # plt.imshow(image)
-    # plt.figure()
-    # plt.axis("off")
-    # plt.imshow(bar)
-    # plt.show()
+    if bestLabels is not None:
+        hist = centroid_histogram2(bestLabels)
+        for (percent, color) in zip(hist, bestCenters):
+            closest = closest_colour((color[0],color[1],color[2]))
+            # print("Closest %s with percent %f"%(closest,percent))
+            composition.append(ColorComposition(percent,color,closest))
+        del hist
     del image
     del image2
-    del hist
-    # del clt
     return composition
 
 if __name__ == "__main__":

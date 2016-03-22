@@ -2,9 +2,11 @@ import math
 from statistics import mean
 
 import cv2
+import numpy as np
 from sklearn import metrics
 from sklearn.cluster import KMeans
-from dominateColor import getColorComposition,ColorComposition
+from dominateColor import getColorComposition2,ColorComposition
+from skimage.measure import structural_similarity as ssim
 from util import getsite, getdatetime
 from datetime import datetime
 histogram_comparison_method = ("Correlation", cv2.HISTCMP_CORREL)
@@ -13,10 +15,19 @@ histogram_comparison_method = ("Correlation", cv2.HISTCMP_CORREL)
 def gethistogram(cvim):
     imhist = cv2.calcHist([cvim], [0, 1, 2], None, [256, 256, 256],
                           [0, 256, 0, 256, 0, 256])
-    return cv2.normalize(imhist, imhist)
+    return cv2.normalize(imhist, imhist,alpha=0,beta=1,norm_type=cv2.NORM_MINMAX)
+
+
+def get3dhisto64(cvim):
+    imhist = cv2.calcHist([cvim], [0, 1, 2], None, [256, 256, 256],
+                          [0, 256, 0, 256, 0, 256])
+    return imhist
 
     # return imhist
-
+def getlavhisto(cvim):
+    imhist = cv2.calcHist([cvim], [0, 1, 2], None, [100, 127, 127],
+                          [0, 100, -127, 127, -127, 127])
+    return cv2.normalize(imhist, imhist)
 
 class CompositeColorResulst:
     """
@@ -75,15 +86,45 @@ class Thumbnail:
 
     def cv_read_rawim(self, path):
         self.path = path
-        self.rawImage = cv2.imread(path + self.imageName, cv2.IMREAD_COLOR)
+        self.rawImage = cv2.imread(cv2.imread(path + self.imageName, cv2.IMREAD_COLOR),cv2.COLOR_BGR2RGB)
 
     def cv_get_histogram(self, path):
         self.path = path
-        self.histogram = gethistogram(cv2.cvtColor(cv2.imread(path + self.imageName, cv2.IMREAD_COLOR), cv2.COLOR_BGR2RGB))
-        self.numUniqueColor = cv2.countNonZero(self.histogram.flatten())
+        print(self.imageName)
+        self.rawImage = cv2.cvtColor(cv2.imread(path + self.imageName, cv2.IMREAD_COLOR),cv2.COLOR_BGR2RGB)
+        self.histogram = gethistogram(self.rawImage)
+        # self.numUniqueColor = cv2.countNonZero(self.histogram.flatten())
+
+    def getColors(self):
+        nonezero = self.histogram.nonzero() # type: np.nonzero
+
+
+        (nzdim1, nzdim2,nzdim3) = self.histogram.nonzero()
+        is1 = 0.0
+        for ((r,g),b) in zip(zip(nzdim1,nzdim2),nzdim3):
+            # print("[%d,%d,%d] %f"%(r,g,b,self.histogram[r,g,b]))
+            is1 += self.histogram[r,g,b]
+
+        dsum = 0.0
+        for ((r,g),b) in zip(zip(nzdim1,nzdim2),nzdim3):
+            # print("[%d,%d,%d] %f"%(r,g,b,self.histogram[r,g,b]/is1))
+            dsum += self.histogram[r,g,b]/is1
+
+
+        print("is 1?? ",dsum)
+
+        #     print(self.histogram[nz])
+        #
+        # for it in np.nonzero(self.histogram):
+        #     print(it)
+        # for r in range(256):
+        #     for g in range(256):
+        #         for b in range(256):
+        #             print("[%d,%d,%d]: "%(r,g,b),self.histogram[r,g,b])
+
 
     def get_dominate_colors(self):
-        return getColorComposition("/home/john/wsdlims_ripped/ECIR2016TurkData/screenshots/"  + self.imageName)
+        return getColorComposition2("/home/john/wsdlims_ripped/ECIR2016TurkData/screenshots/"  + self.imageName)
 
     def getUniqueColors(self):
         image = cv2.imread(self.path + self.imageName, cv2.IMREAD_COLOR)
@@ -116,7 +157,6 @@ class Thumbnail:
 
     def site_date(self):
         return self.id
-
 
     def clean_up(self):
         del self.histogram
@@ -176,6 +216,12 @@ class CompositeThumbnails:
     def group_cvhist(self):
         for im in self.thumbnails:
             im.cv_get_histogram(self.path)
+            im.clean_up()
+            break
+
+    def group_image(self):
+         for im in self.thumbnails:
+            im.cv_read_rawim(self.path)
 
     def av_color(self):
         # it = []
@@ -211,6 +257,23 @@ class CompositeThumbnails:
             if i + 1 < length:
                 ret = math.fabs(cv2.compareHist(self.thumbnails[i].histogram, self.thumbnails[i + 1].histogram,
                                                 cv2.HISTCMP_CORREL))
+                values.append(ret)
+
+                self.date_results.add_ret((self.thumbnails[i].date, self.thumbnails[i + 1].date),
+                                          ret)
+        self.average = mean(values)
+        self.date_results.av = self.average
+
+    def compare_structure_dates(self):
+        self.sort()
+        length = len(self.thumbnails)
+        rang = range(length)
+
+        self.date_results = CompositeThumbResults("Structure", self.composite)
+        values = []
+        for i in rang:
+            if i + 1 < length:
+                ret = ssim(self.thumbnails[i].rawImage, self.thumbnails[i + 1].rawImage)
                 values.append(ret)
 
                 self.date_results.add_ret((self.thumbnails[i].date, self.thumbnails[i + 1].date),
@@ -282,8 +345,15 @@ class MethodCompThums:
     def get_histograms(self):
         for site, compthumb in self.compositThumbs.items():
             compthumb.group_cvhist()
+            break
 
     def calc_comp_hist_date(self):
+        for site, compthumb in self.compositThumbs.items():
+            compthumb.group_cvhist()
+            compthumb.compare_hists_dates()
+            compthumb.clean_up()
+
+    def calc_comp_structure_date(self):
         for site, compthumb in self.compositThumbs.items():
             compthumb.group_cvhist()
             compthumb.compare_hists_dates()

@@ -2,6 +2,9 @@ import json
 import re
 
 import requests
+from datetime import date
+
+from dominateColor import get_colour_name
 
 tokenizer = re.compile('(<[^>]+>|[a-zA-Z]+="[^"]*"|[;,])\\s*')
 
@@ -10,7 +13,9 @@ from util import get_files, check_if_goodURI
 from datetime import date
 import csv
 
-from collections import defaultdict
+import math
+import numpy as np
+from collections import defaultdict, Counter
 
 
 def filterASI(f):
@@ -166,7 +171,7 @@ class cs:
             self.site, self.alSum, self.random, self.aVr,
             self.tmNumMementos, self.tmTimeSpan,
             self.tmNumM2k, self.tmTimeSpan2k, self.tmNumM05k,
-            self.tmTimeSpan05k,self.won.get('Random',' '),
+            self.tmTimeSpan05k,self.won.get('r',' '),
             self.otoRsim,self.ctcRsim,"random")
 
 
@@ -175,7 +180,7 @@ class cs:
             self.site, self.alSum, self.temporal, self.aVt,
             self.tmNumMementos, self.tmTimeSpan,
             self.tmNumM2k, self.tmTimeSpan2k, self.tmNumM05k,
-            self.tmTimeSpan05k,self.won.get('TemporalInterval',' '),
+            self.tmTimeSpan05k,self.won.get('ti',' '),
             self.otoTsim,self.ctcTsim,"temporal")
 
         def outString(self):
@@ -189,18 +194,17 @@ class cs:
             self.site, self.alSum, self.random, self.aVr, self.temporal, self.aVt,
             self.tmNumMementos, self.tmTimeSpan,
             self.tmNumM2k, self.tmTimeSpan2k, self.tmNumM05k,
-            self.tmTimeSpan05k,self.won.get('Random',' '),self.won.get('TemporalInterval',' '),
+            self.tmTimeSpan05k,self.won.get('r',' '),self.won.get('ti',' '),
             self.otoRsim,self.otoTsim,self.ctcRsim,self.ctcTsim)
 
         def __str__(self):
             return self.site
 
-
-
 def gsite(cstr):
     return cstr[cstr.find("_")+1:cstr.rfind("_")]
 
-if __name__ == '__main__':
+
+def generate():
     impath = "/home/john/wsdlims_ripped/ECIR2016TurkData/screenshots"  # args["ip"]
     compath = "/home/john/wsdlims_ripped/ECIR2016TurkData/composites"  # args["cp"]
     with open("tms2.json", "r") as tm:
@@ -239,13 +243,12 @@ if __name__ == '__main__':
             color[row['site']].otoTsim = arsim
 
 
-    with open("tileDifRedo.csv","r") as read:
+    with open("wins.csv","r") as read:
         reader = csv.DictReader(read)
         for row in reader:
-            awon = int(row['awon'])
-            mwon = int(row['mwom'])
-            m = row['method']
-            color[row['site']].won[m] = str(round(awon/(awon+mwon),2))
+            if color.get(row['site'],None) is not None:
+                color[row['site']].won['r'] = row['awr']
+                color[row['site']].won['ti'] = row['awt']
 
 
 
@@ -296,6 +299,261 @@ if __name__ == '__main__':
                     print("______________________________")
 
 
+
+def histNormalizeWhole(score):
+    for low,high in zip( np.arange(0,1.0,0.1), np.arange(0.1,1.1,0.1)):
+        if low <= score <= high:
+            return low
+
+
+def difToRange(dif):
+    #-0.89892 0.417491
+    for low,high in zip( np.arange(-0.9,0.0,0.1), np.arange(-0.8,0.1,0.1)):
+        # print("%.1f < %.1f < %.1f"%(low,dif,high))
+        if low < dif < high:
+            if high == -0.0:
+                print("We have a negative -0.0")
+            return high
+    return histNormalizeWhole(dif)
+
+
+def get_nrange(item):
+    if -0.09 < item <= -0.009:
+        return "[-0.1_0.0]"
+
+    if -0.1 < item <= -0.0:
+        return "[-0.1_0.0]"
+    if -0.9 < item <= -0.7:
+        return "[-0.8_-0.7]"
+    if -0.7 < item <= -0.6:
+        return "[-0.6_-0.5]"
+
+    if -0.6 < item <= -0.5:
+        return "[-0.6_-0.5]"
+
+    if -0.5 < item <= -0.4:
+        return "[-0.4_-0.3]"
+    if -0.4 < item <= -0.3:
+        return "[-0.4_-0.3]"
+
+    if -0.3 < item <= -0.2:
+        return "[-0.2_-0.1]"
+
+    if -0.8 == item == -0.7:
+        return "[-0.8_-0.7]"
+    if -0.6 <= item <= -0.5:
+        return "[-0.6_-0.5]"
+    if -0.4 == item == -0.3:
+        return "[-0.4_-0.3]"
+    if -0.2 <= item <= -0.1:
+        return "[-0.2_-0.1]"
+    if -0.0 < item < 0.0:
+        return "[-0.1_0.0]"
+
+def get_range(item):
+    if 0.0 < item < 0.2:
+        return "[0.0_0.1]"
+    if 0.2 <= item < 0.4:
+        return "[0.2-0.3]"
+    if 0.4 <= item < 0.6:
+        return "[0.4-0.5]"
+    if 0.6 <= item < 0.8:
+        return "[0.6-0.7]"
+    if 0.8 <= item < 1.0:
+        return "[0.8-0.9]"
+    return '1.0'
+
+class tmdata:
+    def __init__(self,row):
+        self.site = row['site']
+        self.ah = float(row['ah'])
+        self.mh = float(row['mh'])
+        self.mdif = float(row['mdif'])
+        self.nmemento = row['nmemento']
+        self.timespan = row['timespan']
+        self.nummtwo = row['nummtwo']
+        self.twotimespan = row['twotimespan']
+        self.numof = row['numof']
+        self.timespanof = row['timespanof']
+        self.aWP = float(row['aWP'])
+        self.moto = float(row['moto'])
+        self.mtcr = float(row['mtcr'])
+        self.method = row['method']
+
+    def get_out_string(self):
+        return "%s,%s,%s,%s,%s,%s,%s,%s\n"%(self.site,self.ah,self.mh,self.mdif,self.nmemento,self.timespan,self.aWP,self.method)
+
+
+class clr:
+    def __init__(self,dic):
+        self.name = dic['name']
+        self.rgb = dic['rgb']
+        self.percent = float(dic['percent'])
+
+
+    def __lt__(self, other):
+        if isinstance(other, clr):
+            return self.percent < other.percent
+        if isinstance(other,float):
+            return  self.percent < other
+
+    def __le__(self, other):
+        if isinstance(other, clr):
+            return self.percent <= other.percent
+        if isinstance(other,float):
+            return  self.percent <= other
+
+    def __gt__(self, other):
+        if isinstance(other, clr):
+            return self.percent > other.percent
+        if isinstance(other,float):
+            return  self.percent > other
+
+    def __ge__(self, other):
+        if isinstance(other, clr):
+            return self.percent >= other.percent
+        if isinstance(other,float):
+            return  self.percent >= other
+
+    def __str__(self):
+        return "%s,%.2f"%(self.name,self.percent)
+
+class cdate:
+    def __init__(self,d,percents):
+        (year,month,day) = d.split("-")
+        self.d = date(int(year),int(month),int(day))
+        self.colors = sorted(list(map(lambda x:clr(x), percents)))
+
+    def min_max(self):
+        return (min(self.colors),max(self.colors))
+
+    def __lt__(self, other):
+        return self.d < other.d
+    def __le__(self, other):
+        return self.d <= other.d
+    def __gt__(self, other):
+        return self.d > other.d
+    def __ge__(self, other):
+        return self.d >= other.d
+
+    def __str__(self):
+        out = ''
+        for c in sorted(self.colors,reverse=True):
+            out +="["+ c.__str__()+"] "
+        return "%s,%s"%(self.d.isoformat(),out)
+
+class colorComp:
+    def __init__(self,site,cs):
+        self.site = site
+        self.cds = []
+        self.comp = cs['comp']
+        for d,cpercent in cs['color'].items():
+            self.cds.append(cdate(d,cpercent))
+        self.cds.sort()
+
+
+def mementorange(item):
+     if item <= 100:
+         return "mementos <= 100"
+     if 100 < item <= 400:
+         return "100 < mementos <= 400"
+     if 400 < item <= 1000:
+         return "400 < mementos <= 1000"
+     if item > 1000:
+         return "mementos > 1000"
+if __name__ == '__main__':
+    tmds = []
+    grouper = defaultdict(list)
+    with open("allTm2.csv","r") as read:
+        reader = csv.DictReader(read)
+        for row in reader:
+            tdata = tmdata(row)
+            tdata.ah = histNormalizeWhole(tdata.ah)
+            # print(tdata.ah,get_range(tdata.ah))
+            tdata.ah=get_range(tdata.ah)
+            # tdata.mh = histNormalizeWhole(tdata.mh)
+            # print(tdata.mh,get_range(tdata.mh))
+
+            tdata.mh=get_range(tdata.mh)
+            tdata.aWP = histNormalizeWhole(tdata.aWP)
+            # print(tdata.aWP,get_range(tdata.aWP))
+            tdata.aWP = get_range(tdata.aWP)
+            # tdata.mdif = difToRange(tdata.mdif)
+            if tdata.mdif == -0.0 or "%1.1f"%tdata.mdif == "-0.0":
+                tdata.mdif = abs(0.0)
+            print(tdata.mdif,get_range(tdata.mdif))
+            tdata.mdif=get_nrange(tdata.mdif)
+
+            print("____________________________")
+            tmds.append(tdata)
+            grouper[tdata.aWP].append(tdata)
+
+
+    with open("analysis/allTm3.csv","w+") as out:
+        out.write("site,ah,mh,mdif,nmemento,timespan,aWP,method\n")
+        for it in sorted(tmds,key=lambda x:x.site):
+            out.write(it.get_out_string())
+
+    # with open("analysis/windifnmtspan.csv","w+") as out:
+    #     out.write("winp,dif,nmemento,tspan,m\n")
+    #     for winp, group in sorted(grouper.items(),key=lambda x:x[0]):
+    #         print("at %.1f we have %d items"%(winp,len(group)))
+    #         difGroup = defaultdict(list)
+    #         for g in group:
+    #             difGroup[g.mdif].append(g)
+    #         for dif,g in sorted(difGroup.items(),key=lambda x:x[0]):
+    #             print("%1.1f"%dif)
+    #             for it in g:
+    #                 print(it.nmemento,it.timespan)
+    #                 out.write("%.1f,%.1f,%s,%s,%s\n"%(winp,dif,it.nmemento,it.timespan,it.method))
+    #
+    #
+    # with open("analysis/windifmcount.csv","w+") as out:
+    #     out.write("winp,dif,mcount\n")
+    #     for winp, group in sorted(grouper.items(),key=lambda x:x[0]):
+    #         print("at %.1f we have %d items"%(winp,len(group)))
+    #         difGroup = defaultdict(list)
+    #         for g in group:
+    #             difGroup[g.mdif].append(g)
+    #         for dif,g in sorted(difGroup.items(),key=lambda x:x[0]):
+    #             print("%1.1f"%dif)
+    #             mgrouper = Counter()
+    #             for it in g:
+    #                 mgrouper[it.method] += 1
+    #             for k,v in mgrouper.items():
+    #                 out.write("%.1f,%.1f,%s,%d\n"%(winp,dif,k,v))
+
+
+
+
+
+    # with open("colorResults.json","r") as o:
+    #     colorResults = json.load(o)
+    # mcolors = defaultdict(dict)
+    # for method, results in colorResults.items():
+    #     # print(method)
+    #     for site, comp in results.items():
+    #         # print(site,comp)
+    #         mcolors[method][site]=colorComp(site,comp)
+    #
+    # for ((asite,acompt),(rsite,rcompt)),(tsite,tcompt) in \
+    #             zip(zip(sorted(mcolors['alSum'].items(),key=lambda x:x[0]),sorted(mcolors['random'].items(),key=lambda x:x[0]))
+    #                 ,sorted(mcolors['temporalInterval'].items(),key=lambda x:x[0])):
+    #     # print(am,rm,tim)
+    #     print(asite,acompt.comp)
+    #     for ((a,r),t) in zip(zip(acompt.cds,rcompt.cds),tcompt.cds):
+    #         print(a,r,t)
+    #     # for site,cr in sites.items():
+        #     print(site)
+        #     for cds in cr.cds:
+        #         print(cds)
+
+
+            # for colors in comp.items():
+            #     print(colors)
+    # tmds = sorted(tmds,key=lambda x:x.mdif)
+    # print(min(tmds,key=lambda x:x.mdif).mdif,max(tmds,key=lambda x:x.mdif).mdif)
+    # print(-0.9 < -0.89892 < -0.8)
 #
 #
 #
